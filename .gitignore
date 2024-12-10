@@ -1,7 +1,8 @@
 *.dot
 *.ipynb
 *.png
-*.txt
+src/code/*.txt
+src/resource/
 *.log
 *.json
 __pycache__
