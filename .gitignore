@@ -1,3 +1,7 @@
 *.dot
 *.ipynb
+*.png
+*.txt
+*.log
+*.json
 __pycache__
