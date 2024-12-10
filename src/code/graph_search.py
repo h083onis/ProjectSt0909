@@ -33,7 +33,7 @@ class GraphSearch():
 
             # キーワードを含むノードを検出
             if keyword in current_node and depth != 0:
-                results.append((current_node, depth))
+                results.append({"fqcn_name":current_node, "depth":depth})
             
             # 親ノードをスタックに追加
             stack.extend((predecessor, depth + 1) for predecessor in self.graph.predecessors(current_node))

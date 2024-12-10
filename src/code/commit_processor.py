@@ -35,6 +35,7 @@ class CommitProcessor():
     def excute(self, output_path=None):
         commit_data = []
         for i, commit_id in enumerate(self.commit_ids):
+            print(i+1)
             st = time.time()
             self.project_repo.git.checkout(commit_id)
             try:
@@ -55,11 +56,16 @@ class CommitProcessor():
             for ch_file in changed_files:
                 chd_file_with_test_file = {}
                 abs_file_path = os.path.abspath(self.params["project_path"]+'/'+ch_file)
-                fqcn_name = self.cr.fqcn_dict[abs_file_path]
+                fqcn_name = self.cr.path_to_fqcn_dict[abs_file_path]
                 test_files = self.gs.find_files_with_keyword(fqcn_name)
                 chd_file_with_test_file["source_path"] = ch_file
                 chd_file_with_test_file["fqcn_name"] = fqcn_name
                 chd_file_with_test_file["test_file"] = test_files
+                for test in test_files:
+                    relative_path = os.path.relpath(
+                        self.cr.fqcn_to_path_dict[test["fqcn_name"]], start=self.params["project_path"]
+                    )
+                    test["test_path"] = relative_path.replace('\\', '/') 
                 changed_files_with_test_files.append(chd_file_with_test_file)
                 
             json_data["commit_id"] = commit_id
@@ -69,7 +75,7 @@ class CommitProcessor():
             commit_data.append(json_data)
             en = time.time()
             self.logger.log_commit_time(commit_id, en-st)
-            if i >= 0:
+            if i >= 10:
                 break
             
         if not(output_path):

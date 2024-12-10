@@ -14,15 +14,16 @@ class ClassRelation():
         else:
             raise ValueError("Unsupported programming language. Please set 'auth_ext' to 'java'.")
         self.source_file_paths = []
-        self.fqcn_dict = {}
+        self.path_to_fqcn_dict = {}
+        self.fqcn_to_path_dict = {}
       
     def make_class_relation_map(self, to_dot=False, output_path="class_relations.dot"):
         """クラス間の関連を構築し、DOT形式で出力する"""
-        self.source_file_paths = self.get_source_file_paths()
-        self.fqcn_dict = self.get_fqcn_dict(self.source_file_paths)
+        self.get_source_file_paths()
+        self.get_fqcn_dict()
         
         class_relations = []
-        for src_path, fqcn_name in self.fqcn_dict.items():
+        for src_path, fqcn_name in self.path_to_fqcn_dict.items():
             with open(src_path, 'r', encoding='utf-8') as f:
                 code = f.read()
        
@@ -32,7 +33,7 @@ class ClassRelation():
             import_list = self.processor.process(code, "import_declaration")
 
             accessible_classes = self.resolve_accessible_classes(
-                fqcn_name.rsplit('.', maxsplit=1)[0], import_list, self.fqcn_dict.values()
+                fqcn_name.rsplit('.', maxsplit=1)[0], import_list, self.path_to_fqcn_dict.values()
             )
             
             for idf_name in idf_list:
@@ -44,20 +45,19 @@ class ClassRelation():
         return class_relations
     
             
-    def get_fqcn_dict(self, source_file_paths):
+    def get_fqcn_dict(self):
         """各ソースファイルのFQCNを取得"""
-        fqcn_dict = {}
-        for src_path in source_file_paths:
+        for src_path in self.source_file_paths:
             try:
                 with open(src_path, 'r', encoding='utf-8') as f:
                     code = f.read()
                 package_name = self.processor.process(code, "package_declaration")
                 if package_name:
                     public_class_name = os.path.splitext(os.path.basename(src_path))[0]
-                    fqcn_dict[src_path] = f"{package_name}.{public_class_name}"
+                    self.path_to_fqcn_dict[src_path] = f"{package_name}.{public_class_name}"
+                    self.fqcn_to_path_dict[f"{package_name}.{public_class_name}"] = src_path
             except Exception as e:
-                print(f"Error reading file {src_path}: {e}")
-        return fqcn_dict         
+                print(f"Error reading file {src_path}: {e}")    
           
     def resolve_accessible_classes(self, package_name, import_list, fqcn_list):
         """利用可能なクラスを解決"""
@@ -96,11 +96,9 @@ class ClassRelation():
     def get_source_file_paths(self):
         relative_source_file_paths = glob.glob(self.params["project_path"]+"/**/*."+self.params['auth_ext'], recursive=True)
         
-        abs_source_file_paths = [
+        self.source_file_paths = [
             os.path.abspath(source_file_path) for source_file_path in relative_source_file_paths
         ]
-  
-        return abs_source_file_paths
 
 
 def read_args():
@@ -115,7 +113,7 @@ if __name__ == '__main__':
     params = read_args().parse_args()
     cr = ClassRelation(params)
     st = time.time()
-    cr.make_class_relation_map()
+    cr.make_class_relation_map(to_dot=True)
     en = time.time()
     print(en-st)
     
