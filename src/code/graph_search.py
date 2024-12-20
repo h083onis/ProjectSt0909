@@ -7,9 +7,16 @@ class GraphSearch():
     
     def read_dot(self, dot_path):
         """DOTファイルを読み込み、DiGraphを作成"""
+        self.graph = nx.DiGraph()  # グラフをリセット
         self.graph = nx.DiGraph(nx.drawing.nx_pydot.read_dot(dot_path))
+
+    def read_dict(self, relation_dict):
+        self.graph = nx.DiGraph()  # グラフをリセット
+        edges = [(key, value) for key, values in relation_dict.items() for value in values]
+        self.graph.add_edges_from(edges)
     
     def read_set(self, relation_set):
+        self.graph = nx.DiGraph()  # グラフをリセット
         self.graph.add_edges_from(relation_set)
     
     def find_files_with_keyword(self, target_node, keyword="Test"):
@@ -21,10 +28,13 @@ class GraphSearch():
         Returns:
             list[tuple]: キーワードを含むファイル名とその深さ ([(file_name, depth), ...])
         """
+        if target_node not in self.graph:
+            return []
+        
         results = []
         stack = [(target_node, 0)]  # スタックにノードと深さを保持
         visited = set()  # 訪問済みノードを記録
-
+        
         while stack:
             current_node, depth = stack.pop()
             if current_node in visited:
@@ -33,8 +43,8 @@ class GraphSearch():
 
             # キーワードを含むノードを検出
             if keyword in current_node and depth != 0:
-                results.append({"fqcn_name":current_node, "depth":depth})
-            
+                results.append({"fqcn":current_node, "depth":depth})
+                
             # 親ノードをスタックに追加
             stack.extend((predecessor, depth + 1) for predecessor in self.graph.predecessors(current_node))
         
