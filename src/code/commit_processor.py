@@ -40,16 +40,22 @@ class CommitProcessor():
 
         with open(output_path, "w") as f:
             for i, commit_id in enumerate(self.commit_ids):
-                print(str(i+1)+' / '+str(self.commit_ids.shape[0]))
+                print(str(i+1)+' / '+str(len(self.commit_ids)))
                 print(commit_id)
                 st = time.time()
                 try:
                     self.project_repo.git.checkout(commit_id)
                     try:
-                        commit = self.project_repo.commit(commit_id+'~1')
-                    except (IndentationError, BadName):
-                        commit = self.project_repo.commit(self.empty_commmit_id)
-                    diff = commit.diff(commit_id)
+                        commit = self.project_repo.commit(commit_id)
+                        if not commit.parents:
+                            print(f"Commit {commit_id} has no parent; treating as initial commit.")
+                            parent_commit = self.project_repo.tree(self.empty_commmit_id)
+                        else:
+                            parent_commit - commit.parents[0]
+                    except (IndentationError, BadName, ValueError) as e:
+                        print(f"Error accessing parent commit for {commit_id}: {e}")
+                        continue
+                    diff = parent_commit.diff(commit_id)
                     
                     changed_files = self.process_commit(diff, commit_id)
                     if len(changed_files) == 0:
@@ -141,4 +147,8 @@ def read_args():
 if __name__ == "__main__":
     params = read_args().parse_args()
     cp = CommitProcessor(params)
+    with open('retry.txt','r', encoding='utf-8') as f:
+        commit_ids = [line.strip() for line in f.readlines()]
+    print(commit_ids)
+    cp.commit_ids = commit_ids
     cp.excute()
