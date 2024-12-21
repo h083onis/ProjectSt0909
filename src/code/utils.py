@@ -4,7 +4,7 @@ class Logging:
     def __init__(self, info_output='../logs/info.log', debug_output='../logs/debug.log'):
         # ルートロガーを取得
         self.logger = logging.getLogger("commit_logger")
-        self.logger.setLevel(logging.INFO)  # 最低レベルをDEBUGに設定
+        self.logger.setLevel(logging.DEBUG)  # 最低レベルをDEBUGに設定
 
         # INFO以上のログを記録するハンドラー
         info_handler = logging.FileHandler(info_output)
@@ -34,6 +34,6 @@ class Logging:
         self.logger.info(f"Commit {commit_id} processed in {processing_time:.4f} seconds.")
         
     
-    def log_debug_info(self, message):
+    def log_debug_info(self, commit_id, e, error_message):
         """デバッグ情報をログに出力する"""
-        self.logger.debug(message)
+        self.logger.debug(f"Commit {commit_id}\n {e}\n error message :\n{error_message}")

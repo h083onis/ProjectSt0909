@@ -19,7 +19,7 @@ class JavaProcessor():
         return None
     
     def get_type_identifier_in_class(self, target_class, node, idf_set):
-        if node.type in {'interface_declaration', 'class_declaration'}:
+        if node.type in {'interface_declaration', 'class_declaration', 'enum_declaration'}:
             for child in node.children:
                 if child.type == 'identifier':
                     class_name = child.text.decode("utf8", errors='ignore')
@@ -27,7 +27,7 @@ class JavaProcessor():
                         return
                 if child.type in {"superclass", "super_interfaces", "extends_interfaces"}:
                     self.collect_identifiers(child, idf_set)
-                if child.type in {'class_body', 'interface_body'}:
+                if child.type in {'class_body', 'interface_body', 'enum_body'}:
                     for child2 in child.children:
                         self.collect_identifiers(child2, idf_set)
             return

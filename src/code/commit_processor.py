@@ -3,6 +3,8 @@ import json
 import os
 import subprocess
 import time
+import traceback
+import sys
 
 import pandas as pd
 from git import Repo
@@ -33,55 +35,65 @@ class CommitProcessor():
         self.logger = Logging()
         
     def excute(self, output_path=None):
-        commit_data = []
-        for i, commit_id in enumerate(self.commit_ids):
-            print(i+1)
-            st = time.time()
-            self.project_repo.git.checkout(commit_id)
-            try:
-                commit = self.project_repo.commit(commit_id+'~1')
-            except (IndentationError, BadName):
-                commit = self.project_repo.commit(self.empty_commmit_id)
-            diff = commit.diff(commit_id)
-            
-            changed_files = self.process_commit(diff, commit_id)
-            if len(changed_files) == 0:
-                continue
-            
-            json_data = {}
-            class_relations = self.cr.make_class_relation_map(commit_id+'.dot')
-            
-            self.gs.read_set(class_relations)
-            changed_files_with_test_files = []
-            for ch_file in changed_files:
-                chd_file_with_test_file = {}
-                abs_file_path = os.path.abspath(self.params["project_path"]+'/'+ch_file)
-                fqcn_name = self.cr.path_to_fqcn_dict[abs_file_path]
-                test_files = self.gs.find_files_with_keyword(fqcn_name)
-                chd_file_with_test_file["source_path"] = ch_file
-                chd_file_with_test_file["fqcn_name"] = fqcn_name
-                chd_file_with_test_file["test_file"] = test_files
-                for test in test_files:
-                    relative_path = os.path.relpath(
-                        self.cr.fqcn_to_path_dict[test["fqcn_name"]], start=self.params["project_path"]
-                    )
-                    test["test_path"] = relative_path.replace('\\', '/') 
-                changed_files_with_test_files.append(chd_file_with_test_file)
-                
-            json_data["commit_id"] = commit_id
-            json_data["timestamp"] = commit.committed_date
-            json_data["commit_author"] = commit.author.name
-            json_data["changed_files"] = changed_files_with_test_files
-            commit_data.append(json_data)
-            en = time.time()
-            self.logger.log_commit_time(commit_id, en-st)
-            if i >= 10:
-                break
-            
         if not(output_path):
-            output_path = self.params["project_path"].split('/')[-1]+'.json'
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(commit_data, f, indent=4)    
+            output_path = self.params["project_path"].split('/')[-1]+'.txt'
+
+        with open(output_path, "w") as f:
+            for i, commit_id in enumerate(self.commit_ids):
+                print(str(i+1)+' / '+str(len(self.commit_ids)))
+                print(commit_id)
+                st = time.time()
+                try:
+                    self.project_repo.git.checkout(commit_id)
+                    try:
+                        commit = self.project_repo.commit(commit_id)
+                        if not commit.parents:
+                            print(f"Commit {commit_id} has no parent; treating as initial commit.")
+                            parent_commit = self.project_repo.tree(self.empty_commmit_id)
+                        else:
+                            parent_commit - commit.parents[0]
+                    except (IndentationError, BadName, ValueError) as e:
+                        print(f"Error accessing parent commit for {commit_id}: {e}")
+                        continue
+                    diff = parent_commit.diff(commit_id)
+                    
+                    changed_files = self.process_commit(diff, commit_id)
+                    if len(changed_files) == 0:
+                        continue
+                    
+                    json_data = {}
+                    class_relations = self.cr.make_class_relation_map()
+                    
+                    self.gs.read_dict(class_relations)
+                    changed_files_with_test_files = []
+                    for ch_file in changed_files:
+                        chd_file_with_test_file = {}
+                        abs_file_path = os.path.abspath(self.params["project_path"]+'/'+ch_file)
+                        if abs_file_path not in self.cr.path_to_fqcn_dict.keys():
+                            continue
+                        fqcn = self.cr.path_to_fqcn_dict[abs_file_path]
+                        test_files = self.gs.find_files_with_keyword(fqcn)
+                        chd_file_with_test_file["source_path"] = ch_file
+                        chd_file_with_test_file["fqcn"] = fqcn
+                        for test in test_files:
+                            relative_path = os.path.relpath(
+                                self.cr.fqcn_to_path_dict[test["fqcn"]], start=self.params["project_path"]
+                            )
+                            test["test_path"] = relative_path.replace('\\', '/') 
+                        chd_file_with_test_file["test_file"] = test_files
+                        changed_files_with_test_files.append(chd_file_with_test_file)
+                        
+                    json_data["commit_id"] = commit_id
+                    json_data["changed_files"] = changed_files_with_test_files
+                    print(json.dumps(json_data), file=f)
+                except Exception as e:
+                    print(e)
+                    error_message = traceback.format_exc()
+                    print(error_message)
+                    self.logger.log_debug_info(commit_id, e, error_message)
+                finally:
+                    en = time.time()
+                    self.logger.log_commit_time(commit_id, en-st)  
             
     def process_commit(self, diff, commit_id):
         #変更されたファイルを抽出する
@@ -90,11 +102,19 @@ class CommitProcessor():
             ch_type = item.change_type
             if not(item.b_path.endswith('.'+self.auth_ext)) or ch_type == 'D':
                 continue
-            self.out_file_content(commit_id, item.a_path, file_type=self.before_txt)
-            self.out_file_content(commit_id, item.b_path, file_type=self.after_txt)
-            ch_line_num = self.get_ch_line_num()
-            if not(ch_line_num):
-                continue
+            # elif ch_type in {'M', 'R'}:
+            #     self.out_file_content(commit_id, item.a_path, file_type=self.before_txt)
+            #     self.out_file_content(commit_id, item.b_path, file_type=self.after_txt)
+            # elif ch_type in {'A', 'C'}:
+            #     with open(self.before_txt,'w', encoding='utf-8') as f:
+            #         f.truncate(0)
+            #     self.out_file_content(commit_id, item.b_path, file_type=self.after_txt)
+            # else:
+            #     continue
+            
+            # ch_line_num = self.get_ch_line_num()
+            # if not(ch_line_num):
+            #     continue
             changed_files.append(item.b_path)
             
         return changed_files
@@ -115,8 +135,6 @@ class CommitProcessor():
                 for tmp in result.stdout.split('\n')[:-1]]
         return ch_line_num_list
 
-
-
 def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--project_path', type=str, default='../../../../sample_data/camel')
@@ -127,4 +145,9 @@ def read_args():
 if __name__ == "__main__":
     params = read_args().parse_args()
     cp = CommitProcessor(params)
+    # with open('retry.txt', 'r') as f:
+    #     commit_ids = [line.strip() for line in f.readlines()]
+    # print(commit_ids)
+    # cp.commit_ids = commit_ids
     cp.excute()
+    sys.exit(0)
