@@ -84,10 +84,8 @@ class CommitProcessor():
                         changed_files_with_test_files.append(chd_file_with_test_file)
                         
                     json_data["commit_id"] = commit_id
-                    json_data["timestamp"] = commit.committed_date
-                    json_data["commit_author"] = commit.author.name
                     json_data["changed_files"] = changed_files_with_test_files
-                    print(str(json_data), file=f)
+                    print(json.dumps(json_data), file=f)
                 except Exception as e:
                     print(e)
                     error_message = traceback.format_exc()
@@ -147,8 +145,9 @@ def read_args():
 if __name__ == "__main__":
     params = read_args().parse_args()
     cp = CommitProcessor(params)
-    with open('retry.txt','r', encoding='utf-8') as f:
-        commit_ids = [line.strip() for line in f.readlines()]
-    print(commit_ids)
-    cp.commit_ids = commit_ids
+    # with open('retry.txt', 'r') as f:
+    #     commit_ids = [line.strip() for line in f.readlines()]
+    # print(commit_ids)
+    # cp.commit_ids = commit_ids
     cp.excute()
+    sys.exit(0)
