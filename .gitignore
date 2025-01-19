@@ -1,5 +1,4 @@
 *.dot
-*.ipynb
 *.png
 *.csv
 src/code/*.txt
