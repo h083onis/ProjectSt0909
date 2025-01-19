@@ -1,6 +1,6 @@
 *.dot
-*.ipynb
 *.png
+*.csv
 src/code/*.txt
 src/resource/
 *.log
