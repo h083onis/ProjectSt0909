@@ -27,7 +27,7 @@ class CommitProcessor():
         self.before_txt = 'before.txt'
         self.after_txt = 'after.txt'
   
-        self.empty_commmit_id = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+        self.empty_commit_id = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
         self.diff_command = ("diff -B -w --old-line-format=<\t%dn\n --new-line-format=>\t%dn\n --unchanged-line-format= "+self.before_txt+" "+self.after_txt).split(' ')
         self.cr = ClassRelation(self.params)
         self.rc = RemoveComment()
@@ -49,9 +49,9 @@ class CommitProcessor():
                         commit = self.project_repo.commit(commit_id)
                         if not commit.parents:
                             print(f"Commit {commit_id} has no parent; treating as initial commit.")
-                            parent_commit = self.project_repo.tree(self.empty_commmit_id)
+                            parent_commit = self.project_repo.tree(self.empty_commit_id)
                         else:
-                            parent_commit - commit.parents[0]
+                            parent_commit = commit.parents[0]
                     except (IndentationError, BadName, ValueError) as e:
                         print(f"Error accessing parent commit for {commit_id}: {e}")
                         continue
