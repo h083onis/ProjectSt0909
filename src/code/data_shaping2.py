@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import argparse
 import time
+from replace_duble_quote import replace_double_quote
 
 class DataShaping():
     def __init__(self, params):
@@ -22,6 +23,7 @@ class DataShaping():
                 if tmp == '':
                     break
                 try:
+                    tmp = replace_double_quote(tmp)
                     data = json.loads(tmp)
                 except json.JSONDecodeError as e:
                     print(f"Error parsing JSON: {e}")
@@ -101,7 +103,7 @@ class DataShaping():
         
 def read_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='../resource/camel3.txt')
+    parser.add_argument('--data_path', type=str, default='../resource/camel.txt')
     parser.add_argument('--output_csv_path', type=str, default='shaped_data.csv')
     parser.add_argument('--changed_src_paths', type=str, default='../resource/changed_src_paths.json')
     return parser
